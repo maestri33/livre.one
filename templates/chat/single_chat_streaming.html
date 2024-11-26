@@ -1,0 +1,60 @@
+{% extends "web/chat/chat_wrapper.html" %}
+{% load i18n %}
+{% load chat_tags %}
+{% block page_head %}
+  <script src="https://unpkg.com/htmx-ext-ws@2.0.0/ws.js" defer></script>
+{% endblock %}
+{% block chat_ui %}
+<div class="pg-chat-wrapper" hx-ext="ws" ws-connect="{{ websocket_url }}" x-data="{message: ''}">
+  <div id="message-list" class="pg-chat-pane" hx-swap-oob="beforeend">
+    <div class="pg-chat-message-system">
+      {% include "chat/components/system_icon.html" %}
+      <div class="pg-message-contents">
+        <p>{% translate "Hello, what can I help you with today?" %}</p>
+      </div>
+    </div>
+  {% if chat %}
+    {% for message in chat.messages.all %}
+    {% with message.content as message_text %}
+      {% if message.is_human_message %}
+        {% include 'chat/components/user_message.html' %}
+      {% else %}
+        <div class="pg-chat-message-system">
+          {% include "chat/components/system_icon.html" %}
+          <div class="pg-message-contents">
+            {{ message_text|render_markdown }}
+          </div>
+        </div>
+      {% endif %}
+    {% endwith %}
+    {% endfor %}
+  {% endif %}
+  </div>
+  <form class="pg-chat-input-bar" ws-send @submit.prevent="message === ''" @submit="message = ''">
+    <input id="chat-message-input" name="message" type="text" x-model="message" placeholder="{% translate 'Type your message...' %}" aria-label="Message" class="pg-control">
+    <button type="submit" class="pg-button-primary mx-2" :disabled="!message">{% translate "Send" %}</button>
+  </form>
+</div>
+{% endblock %}
+{% block page_js %}
+<script>
+  // scroll to bottom of chat after every incoming message
+  document.body.addEventListener('htmx:wsAfterMessage', function(evt) {
+    const chatUI = document.getElementById('message-list');
+    chatUI.scrollTop = chatUI.scrollHeight;
+  });
+  // update URL if asked to do so.
+  document.body.addEventListener('htmx:wsAfterMessage', function(evt) {
+    try {
+      // Try to parse evt.detail.message as JSON
+      const message = JSON.parse(evt.detail.message);
+      // Check if the parsed JSON contains a value called "pushURL" and if so push to browser history
+      if (message.pushURL) {
+        window.history.pushState({}, '', message.pushURL);
+      }
+    } catch (e) {
+      // evt.detail.message is not JSON parseable - likely an htmx message we can ignore.
+    }
+  });
+</script>
+{% endblock page_js %}

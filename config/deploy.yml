@@ -1,0 +1,86 @@
+service: core
+
+image: <namespace>/core
+
+env:
+  # This is the minimal set of environment variables needed to run the app
+  # in production. You can add more here and in the .kamal/secrets file as needed.
+  clear:
+    DJANGO_SETTINGS_MODULE: core.settings_production
+    ALLOWED_HOSTS: "Livre.one"
+    USE_S3_MEDIA: 'True'
+    AWS_STORAGE_BUCKET_NAME: 'YOUR_APP-media'
+    STRIPE_LIVE_MODE: 'True'
+  secret:
+    - POSTGRES_PASSWORD
+    - SECRET_KEY
+    - DATABASE_URL
+    - REDIS_URL
+    - AWS_ACCESS_KEY_ID
+    - AWS_SECRET_ACCESS_KEY
+    - STRIPE_LIVE_PUBLIC_KEY
+    - STRIPE_LIVE_SECRET_KEY
+    - STRIPE_TEST_PUBLIC_KEY
+    - STRIPE_TEST_SECRET_KEY
+    - DJSTRIPE_WEBHOOK_SECRET
+    - ACTIVE_ECOMMERCE_PRODUCT_IDS
+    - OPENAI_API_KEY
+    - STABILITY_AI_API_KEY
+    - SENTRY_DSN
+    - TURNSTILE_KEY
+    - TURNSTILE_SECRET
+
+# https://kamal-deploy.org/docs/configuration#using-different-roles-for-servers
+servers:
+  web:
+    hosts:
+      - <IP-ADDRESS>
+    options:
+      expose: "8000"
+  celery:
+    hosts:
+      - <IP-ADDRESS>
+    cmd: celery -A core worker -l INFO --concurrency 2
+  celerybeat:
+    hosts:
+      - <IP-ADDRESS>
+    cmd: celery -A core beat -l INFO
+
+# To use a non-root user see https://kamal-deploy.org/docs/configuration/ssh/#the-ssh-user
+# ssh:
+#   user: kamal
+
+# See https://kamal-deploy.org/docs/configuration/builders/ for config options
+builder:
+  arch: amd64
+  dockerfile: 'Dockerfile.web'
+
+# See https://kamal-deploy.org/docs/configuration/docker-registry/ for config options
+registry:
+  username: <DOCKER REGISTRY USERNAME>
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+accessories:
+  # docker hostname will be 'core-postgres'
+  postgres:
+    image: postgres
+    host: <IP-ADDRESS>
+    directories:
+      - data:/var/lib/postgresql/data
+    env:
+      clear:
+        POSTGRES_USER: core
+        POSTGRES_DB: core
+      secret:
+        - POSTGRES_PASSWORD
+  ## docker hostname will be 'core-redis'
+  redis:
+    image: redis
+    host: <IP-ADDRESS>
+
+# See https://kamal-deploy.org/docs/configuration/proxy/ for config options
+proxy:
+  ssl: true
+  host: Livre.one
+  app_port: 8000
