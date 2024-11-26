@@ -207,3 +207,4 @@ find . -name '*.py' | entr docker compose exec web python manage.py test apps.ut
 ```bash
 find . -name '*.py' | entr python manage.py test apps.utils.tests.test_slugs
 ```
+# livre.one
